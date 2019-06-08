@@ -195,6 +195,8 @@ def _common_impl(ctx):
     if user_arg:
         user_arg = "--user=\"" + user_arg + "\""
 
+    if cluster_arg:
+        cluster_arg = "--cluster=\"" + cluster_arg + "\""
 
     if ctx.file.kubeconfig:
         kubeconfig_arg = _runfiles(ctx, ctx.file.kubeconfig)
