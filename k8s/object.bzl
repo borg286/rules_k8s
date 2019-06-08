@@ -155,7 +155,7 @@ def _common_impl(ctx):
     files = [ctx.executable.resolver]
 
     cluster_arg = ctx.attr.cluster
-    cluster_arg = ctx.expand_make_variables("cluster", cluster_arg, {})
+    cluster_arg = "--cluster=" + ctx.expand_make_variables("cluster", cluster_arg, {})
     if "{" in ctx.attr.cluster:
         cluster_file = ctx.actions.declare_file(ctx.label.name + ".cluster-name")
         _resolve(ctx, ctx.attr.cluster, cluster_file)
@@ -163,7 +163,7 @@ def _common_impl(ctx):
         files += [cluster_file]
 
     context_arg = ctx.attr.context
-    context_arg = ctx.expand_make_variables("context", context_arg, {})
+    context_arg = "--context=" + ctx.expand_make_variables("context", context_arg, {})
     if "{" in ctx.attr.context:
         context_file = ctx.actions.declare_file(ctx.label.name + ".context-name")
         _resolve(ctx, ctx.attr.context, context_file)
@@ -171,7 +171,7 @@ def _common_impl(ctx):
         files += [context_file]
 
     user_arg = ctx.attr.user
-    user_arg = ctx.expand_make_variables("user", user_arg, {})
+    user_arg = "--user=" + ctx.expand_make_variables("user", user_arg, {})
     if "{" in ctx.attr.user:
         user_file = ctx.actions.declare_file(ctx.label.name + ".user-name")
         _resolve(ctx, ctx.attr.user, user_file)
