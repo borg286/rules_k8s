@@ -155,7 +155,7 @@ def _common_impl(ctx):
     files = [ctx.executable.resolver]
 
     cluster_arg = ctx.attr.cluster
-    cluster_arg = "--cluster=" + ctx.expand_make_variables("cluster", cluster_arg, {})
+    cluster_arg = ctx.expand_make_variables("cluster", cluster_arg, {})
     if "{" in ctx.attr.cluster:
         cluster_file = ctx.actions.declare_file(ctx.label.name + ".cluster-name")
         _resolve(ctx, ctx.attr.cluster, cluster_file)
@@ -163,19 +163,19 @@ def _common_impl(ctx):
         files += [cluster_file]
 
     context_arg = ctx.attr.context
-    context_arg = "--context=" + ctx.expand_make_variables("context", context_arg, {})
+    context_arg = ctx.expand_make_variables("context", context_arg, {})
     if "{" in ctx.attr.context:
         context_file = ctx.actions.declare_file(ctx.label.name + ".context-name")
         _resolve(ctx, ctx.attr.context, context_file)
-        context_arg = "--context=$(cat %s)" % _runfiles(ctx, context_file)
+        context_arg = "$(cat %s)" % _runfiles(ctx, context_file)
         files += [context_file]
 
     user_arg = ctx.attr.user
-    user_arg = "--user=" + ctx.expand_make_variables("user", user_arg, {})
+    user_arg = ctx.expand_make_variables("user", user_arg, {})
     if "{" in ctx.attr.user:
         user_file = ctx.actions.declare_file(ctx.label.name + ".user-name")
         _resolve(ctx, ctx.attr.user, user_file)
-        user_arg = "--user=$(cat %s)" % _runfiles(ctx, user_file)
+        user_arg = "$(cat %s)" % _runfiles(ctx, user_file)
         files += [user_file]
 
     namespace_arg = ctx.attr.namespace
@@ -189,11 +189,22 @@ def _common_impl(ctx):
     if namespace_arg:
         namespace_arg = "--namespace=\"" + namespace_arg + "\""
 
+    if context_arg:
+        context_arg = "--context=\"" + context_arg + "\""
+
+    if user_arg:
+        user_arg = "--user=\"" + user_arg + "\""
+
+
     if ctx.file.kubeconfig:
-        kubeconfig_arg = "--kubeconfig=" + _runfiles(ctx, ctx.file.kubeconfig)
+        kubeconfig_arg = _runfiles(ctx, ctx.file.kubeconfig)
         files += [ctx.file.kubeconfig]
     else:
         kubeconfig_arg = ""
+
+    if kubeconfig_arg:
+        kubeconfig_arg = "--kubeconfig=\"" + kubeconfig_arg + "\""
+
 
     kubectl_tool_info = ctx.toolchains["@io_bazel_rules_k8s//toolchains/kubectl:toolchain_type"].kubectlinfo
     if kubectl_tool_info.tool_path == "" and not kubectl_tool_info.tool_target:
