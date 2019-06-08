@@ -159,7 +159,7 @@ def _common_impl(ctx):
     if "{" in ctx.attr.cluster:
         cluster_file = ctx.actions.declare_file(ctx.label.name + ".cluster-name")
         _resolve(ctx, ctx.attr.cluster, cluster_file)
-        cluster_arg = "$(cat %s)" % _runfiles(ctx, cluster_file)
+        cluster_arg = "--cluster=$(cat %s)" % _runfiles(ctx, cluster_file)
         files += [cluster_file]
 
     context_arg = ctx.attr.context
@@ -167,7 +167,7 @@ def _common_impl(ctx):
     if "{" in ctx.attr.context:
         context_file = ctx.actions.declare_file(ctx.label.name + ".context-name")
         _resolve(ctx, ctx.attr.context, context_file)
-        context_arg = "$(cat %s)" % _runfiles(ctx, context_file)
+        context_arg = "--context=$(cat %s)" % _runfiles(ctx, context_file)
         files += [context_file]
 
     user_arg = ctx.attr.user
@@ -175,7 +175,7 @@ def _common_impl(ctx):
     if "{" in ctx.attr.user:
         user_file = ctx.actions.declare_file(ctx.label.name + ".user-name")
         _resolve(ctx, ctx.attr.user, user_file)
-        user_arg = "$(cat %s)" % _runfiles(ctx, user_file)
+        user_arg = "--user=$(cat %s)" % _runfiles(ctx, user_file)
         files += [user_file]
 
     namespace_arg = ctx.attr.namespace
@@ -190,7 +190,7 @@ def _common_impl(ctx):
         namespace_arg = "--namespace=\"" + namespace_arg + "\""
 
     if ctx.file.kubeconfig:
-        kubeconfig_arg = _runfiles(ctx, ctx.file.kubeconfig)
+        kubeconfig_arg = "--kubeconfig=" + _runfiles(ctx, ctx.file.kubeconfig)
         files += [ctx.file.kubeconfig]
     else:
         kubeconfig_arg = ""
