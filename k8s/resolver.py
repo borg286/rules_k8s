@@ -144,19 +144,23 @@ def Publish(transport, image_chroot,
     layer = []
 
   name_to_replace = name
+  print("Tagging " + name_to_replace, file=sys.stderr)
   if image_chroot:
     name_to_publish = docker_name.Tag(os.path.join(image_chroot, name), strict=False)
   else:
     # Without a chroot, the left-hand-side must be a valid tag.
     name_to_publish = docker_name.Tag(name, strict=False)
 
+  print("Resolving " + name_to_publish, file=sys.stderr)
   # Resolve the appropriate credential to use based on the standard Docker
   # client logic.
   creds = docker_creds.DefaultKeychain.Resolve(name_to_publish)
 
+  print("Pushing", file=sys.stderr)
   with v2_2_session.Push(name_to_publish, creds, transport, threads=_THREADS) as session:
     with v2_2_image.FromDisk(config, zip(digest or [], layer or []),
                              legacy_base=tarball) as v2_2_img:
+      print("Uploading", file=sys.stderr)
       session.upload(v2_2_img)
 
       return (name_to_replace, docker_name.Digest('{repository}@{digest}'.format(
@@ -178,6 +182,7 @@ def main():
     kwargs = dict([x.split('=', 2) for x in parts])
     try:
       (tag, digest) = Publish(transport, args.image_chroot, **kwargs)
+      print("Done Publishing", file=sys.stderr)
       overrides[tag] = digest
       unseen_strings.add(tag)
     except Exception as e:
