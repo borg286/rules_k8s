@@ -151,7 +151,7 @@ def Publish(transport, image_chroot,
     # Without a chroot, the left-hand-side must be a valid tag.
     name_to_publish = docker_name.Tag(name, strict=False)
 
-  print("Resolving " + name_to_publish, file=sys.stderr)
+  print("Resolving " + str(name_to_publish), file=sys.stderr)
   # Resolve the appropriate credential to use based on the standard Docker
   # client logic.
   creds = docker_creds.DefaultKeychain.Resolve(name_to_publish)
