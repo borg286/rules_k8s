@@ -351,6 +351,7 @@ _k8s_object = rule(
             "image_targets": attr.label_list(allow_files = True),
             "images": attr.string_dict(),
             "substitutions": attr.string_dict(),
+            "apply_overwrite": attr.bool(default=True, mandatory=False),
             "template": attr.label(
                 allow_single_file = [
                     ".yaml",
