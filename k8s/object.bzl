@@ -247,6 +247,7 @@ def _common_impl(ctx):
             substitutions["%{unresolved}"] = _runfiles(ctx, ctx.file.unresolved)
             files += ctx.files.unresolved
 
+        substitutions["%{apply_overwrite}"] = ""
         if hasattr(ctx.attr, "apply_overwrite") and not ctx.attr.apply_overwrite:
             substitutions["%{apply_overwrite}"] = "--overwrite=" + ctx.attr.apply_overwrite
 
