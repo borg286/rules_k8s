@@ -247,6 +247,9 @@ def _common_impl(ctx):
             substitutions["%{unresolved}"] = _runfiles(ctx, ctx.file.unresolved)
             files += ctx.files.unresolved
 
+        if hasattr(ctx.attr, "apply_overwrite") and !ctx.attr.apply_overwrite:
+            substitutions["%{apply_overwrite}"] = "--overwrite=" + ctx.attr.apply_overwrite
+
         ctx.actions.expand_template(
             template = ctx.file._template,
             substitutions = substitutions,
@@ -380,6 +383,10 @@ _k8s_object_apply = rule(
             "_template": attr.label(
                 default = Label("//k8s:apply.sh.tpl"),
                 allow_single_file = True,
+            ),
+            "apply_overwrite": attr.bool(
+                default=True,
+                mandatory=False,
             ),
         },
         _common_attrs,
@@ -565,6 +572,7 @@ def k8s_object(name, **kwargs):
             user = kwargs.get("user"),
             namespace = kwargs.get("namespace"),
             args = kwargs.get("args"),
+            apply_overwrite = kwargs.get("apply_overwrite"),
             **implicit_args
         )
         if "kind" in kwargs:
