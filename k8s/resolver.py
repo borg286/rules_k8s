@@ -193,18 +193,9 @@ def main():
     inputs = f.read()
 
   def _StringToDigest(t):
-    if t in unseen_strings:
-      unseen_strings.remove(t)
     return StringToDigest(t, overrides, transport)
 
   content = Resolve(inputs, _StringToDigest)
-
-  if len(unseen_strings) > 0 and not args.allow_unused_images:
-    print('ERROR: The following image references were not found in %r:' %
-          args.template, file=sys.stderr)
-    for ref in unseen_strings:
-      print('    %s' % ref, file=sys.stderr)
-    sys.exit(1)
 
   print(content)
 
