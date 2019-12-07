@@ -125,22 +125,22 @@ func parseImageSpec(spec string) (imageSpec, error) {
 // given stamper.
 // The stamped image name is returned referenced by its sha256 digest.
 func publishSingle(spec imageSpec, stamper *compat.Stamper) (string, error) {
-        fmt.Errorf("Fetching Layers")
+        log.Print("Fetching Layers")
 	layers, err := spec.layers()
 	if err != nil {
 		return "", fmt.Errorf("unable to convert the layer parts in image spec for %s into a single comma separated argument: %v", spec.name, err)
 	}
-        fmt.Errorf("fetching image parts from args")
+        log.Print("fetching image parts from args")
 	imgParts, err := compat.ImagePartsFromArgs(spec.imgConfig, "", spec.imgTarball, layers)
 	if err != nil {
 		return "", fmt.Errorf("unable to determine parts of the image from the specified arguments: %v", err)
 	}
-        fmt.Errorf("Reading image")
+        log.Print("Reading image")
 	img, err := compat.ReadImage(imgParts)
 	if err != nil {
 		return "", fmt.Errorf("error reading image: %v", err)
 	}
-        fmt.Errorf("Stamping")
+        log.Print("Stamping")
 	stampedName := stamper.Stamp(spec.name)
 
 	var ref name.Reference
@@ -158,16 +158,16 @@ func publishSingle(spec imageSpec, stamper *compat.Stamper) (string, error) {
 		}
 		ref = t
 	}
-        fmt.Errorf("Fetching auth")
+        log.Print("Fetching auth")
 	auth, err := authn.DefaultKeychain.Resolve(ref.Context())
 	if err != nil {
 		return "", fmt.Errorf("unable to get authenticator for image %v", ref.Name())
 	}
-        fmt.Errorf("Writing with auth")
+        log.Print("Writing with auth")
 	if err := remote.Write(ref, img, remote.WithAuth(auth)); err != nil {
 		return "", fmt.Errorf("unable to push image %v: %v", ref.Name(), err)
 	}
-        fmt.Errorf("Fetching digest")
+        log.Print("Fetching digest")
 	d, err := img.Digest()
 	if err != nil {
 		return "", fmt.Errorf("unable to get digest of image %v", ref.Name())
