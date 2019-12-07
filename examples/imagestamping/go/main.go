@@ -11,11 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-local deployment = import "../deployment.libsonnet";
-local container = import "../container.libsonnet";
+package main
 
-deployment.Simple("hello-grpc-staging",
-	          container.Simple(
-		     "hello-grpc",
-		     "us.gcr.io/not-my-project/hello-grpc:staging",
-		     50051))
+func main() {
+	println("hello image stamping test container")
+}

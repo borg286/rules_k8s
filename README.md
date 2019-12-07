@@ -20,31 +20,25 @@ configurations / clusters.
 Add the following to your `WORKSPACE` file to add the necessary external dependencies:
 
 ```python
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
-
-git_repository(
-    name = "io_bazel_rules_docker",
-    commit = "{HEAD}",
-    remote = "https://github.com/bazelbuild/rules_docker.git",
-)
-
-load(
-    "@io_bazel_rules_docker//repositories:repositories.bzl",
-    container_repositories = "repositories",
-)
-container_repositories()
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # This requires rules_docker to be fully instantiated before
 # it is pulled in.
-git_repository(
+# Download the rules_k8s repository at release v0.3.1
+http_archive(
     name = "io_bazel_rules_k8s",
-    commit = "{HEAD}",
-    remote = "https://github.com/bazelbuild/rules_k8s.git",
+    sha256 = "cc75cf0d86312e1327d226e980efd3599704e01099b58b3c2fc4efe5e321fcd9",
+    strip_prefix = "rules_k8s-0.3.1",
+    urls = ["https://github.com/bazelbuild/rules_k8s/releases/download/v0.3.1/rules_k8s-v0.3.1.tar.gz"],
 )
 
 load("@io_bazel_rules_k8s//k8s:k8s.bzl", "k8s_repositories")
 
 k8s_repositories()
+
+load("@io_bazel_rules_k8s//k8s:k8s_go_deps.bzl", k8s_go_deps = "deps")
+
+k8s_go_deps()
 ```
 
 ## Kubernetes Authentication
@@ -461,11 +455,11 @@ A rule for interacting with Kubernetes objects.
       <td><code>context</code></td>
       <td>
         <p><code>string, optional</code></p>
-        <p>The name of a kubeconfig context to use. Subject to "Make" variable 
+        <p>The name of a kubeconfig context to use. Subject to "Make" variable
           substitution.</p>
         <p><b>If this is omitted, the current context will be used.</b></p>
       </td>
-    </tr>    
+    </tr>
     <tr>
       <td><code>namespace</code></td>
       <td>
@@ -483,7 +477,7 @@ A rule for interacting with Kubernetes objects.
         <p><code>string, optional</code></p>
         <p>The user to authenticate to the cluster as configured with kubectl.
           Subject to "Make" variable substitution.</p>
-        <p><b>If this is omitted, kubectl will authenticate as the user from the 
+        <p><b>If this is omitted, kubectl will authenticate as the user from the
           current context.</b></p>
       </td>
     </tr>
@@ -749,4 +743,3 @@ Here's a (non-exhaustive) list of companies that use `rules_k8s` in production. 
   * [Etsy](https://www.etsy.com)
   * [Jetstack](https://www.jetstack.io/)
   * [Prow](https://github.com/kubernetes/test-infra/tree/master/prow)
-

@@ -1,17 +1,17 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: hello-grpc-staging
+  name: image-stamping
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        app: hello-grpc-staging
+        app: image-stamping
     spec:
       containers:
-      - name: hello-grpc
-        image: us.gcr.io/not-my-project/hello-grpc:staging
+      - name: image-stamping
+        image: index.docker.io/parsec86/{REPOSITORY}:{STABLE_GIT_COMMIT}
         imagePullPolicy: Always
         ports:
-        - containerPort: 50051
+        - containerPort: 50051 

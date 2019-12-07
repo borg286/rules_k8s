@@ -22,21 +22,35 @@ k8s_defaults = _k8s_defaults
 def k8s_repositories():
     """Download dependencies of k8s rules."""
 
-    # Used by utilities for roundtripping yaml.
-    http_archive(
-        name = "yaml",
-        build_file_content = """
+    excludes = native.existing_rules().keys()
+
+    if "com_github_yaml_pyyaml" not in excludes:
+        # Used by utilities for roundtripping yaml.
+        http_archive(
+            name = "com_github_yaml_pyyaml",
+            build_file_content = """
 py_library(
     name = "yaml",
-    srcs = glob(["*.py"]),
+    srcs = glob(["lib/yaml/*.py"]),
+    imports = [
+        "lib",
+    ],
     visibility = ["//visibility:public"],
-)""",
-        sha256 = "592766c6303207a20efc445587778322d7f73b161bd994f227adaa341ba212ab",
-        urls = [("https://pypi.python.org/packages/4a/85/" +
-                 "db5a2df477072b2902b0eb892feb37d88ac635d36245a72a6a69b23b383a" +
-                 "/PyYAML-3.12.tar.gz")],
-        strip_prefix = "PyYAML-3.12/lib/yaml",
-    )
+)
+
+py_library(
+    name = "yaml3",
+    srcs = glob(["lib3/yaml/*.py"]),
+    imports = [
+        "lib3",
+    ],
+    visibility = ["//visibility:public"],
+)
+""",
+            sha256 = "e9df8412ddabc9c21b4437ee138875b95ebb32c25f07f962439e16005152e00e",
+            strip_prefix = "pyyaml-5.1.2",
+            urls = ["https://github.com/yaml/pyyaml/archive/5.1.2.zip"],
+        )
 
     # Register the default kubectl toolchain targets for supported platforms
     # note these work with the autoconfigured toolchain
@@ -45,15 +59,34 @@ py_library(
         "@io_bazel_rules_k8s//toolchains/kubectl:kubectl_osx_toolchain",
         "@io_bazel_rules_k8s//toolchains/kubectl:kubectl_windows_toolchain",
     )
-
-    excludes = native.existing_rules().keys()
     if "io_bazel_rules_go" not in excludes:
-        # Only needed when building kubectl from source. It's always included
-        # here to keep all the http_archive calls in one function for simplicity.
         http_archive(
             name = "io_bazel_rules_go",
-            sha256 = "a82a352bffae6bee4e95f68a8d80a70e87f42c4741e6a448bec11998fcc82329",
-            url = "https://github.com/bazelbuild/rules_go/releases/download/0.18.5/rules_go-0.18.5.tar.gz",
+            sha256 = "b9aa86ec08a292b97ec4591cf578e020b35f98e12173bbd4a921f84f583aebd9",
+            urls = [
+                "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/rules_go/releases/download/v0.20.2/rules_go-v0.20.2.tar.gz",
+                "https://github.com/bazelbuild/rules_go/releases/download/v0.20.2/rules_go-v0.20.2.tar.gz",
+            ],
+        )
+    if "bazel_gazelle" not in excludes:
+        http_archive(
+            name = "bazel_gazelle",
+            sha256 = "7fc87f4170011201b1690326e8c16c5d802836e3a0d617d8f75c3af2b23180c4",
+            urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.18.2/bazel-gazelle-0.18.2.tar.gz"],
+        )
+    if "io_bazel_rules_docker" not in excludes:
+        http_archive(
+            name = "io_bazel_rules_docker",
+            sha256 = "14ac30773fdb393ddec90e158c9ec7ebb3f8a4fd533ec2abbfd8789ad81a284b",
+            strip_prefix = "rules_docker-0.12.1",
+            urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.12.1/rules_docker-v0.12.1.tar.gz"],
+        )
+    if "bazel_skylib" not in excludes:
+        http_archive(
+            name = "bazel_skylib",
+            sha256 = "e5d90f0ec952883d56747b7604e2a15ee36e288bb556c3d0ed33e818a4d971f2",
+            strip_prefix = "bazel-skylib-1.0.2",
+            urls = ["https://github.com/bazelbuild/bazel-skylib/archive/1.0.2.tar.gz"],
         )
     if "k8s_config" not in excludes:
         # WORKSPACE target to configure the kubectl tool

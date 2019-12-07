@@ -15,13 +15,24 @@ workspace(name = "io_bazel_rules_k8s")
 
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
+load("//k8s:k8s.bzl", "k8s_defaults", "k8s_repositories")
+
+k8s_repositories()
+
+load("//k8s:k8s_go_deps.bzl", k8s_go_deps = "deps")
+
+k8s_go_deps()
 
 http_archive(
     name = "com_google_protobuf",
-    sha256 = "f1748989842b46fa208b2a6e4e2785133cfcc3e4d43c17fecb023733f0f5443f",
-    strip_prefix = "protobuf-3.7.1",
-    url = "https://github.com/google/protobuf/archive/v3.7.1.tar.gz",
+    sha256 = "6d356a6279cc76d2d5c4dfa6541641264b59eae0bc96b852381361e3400d1f1c",
+    strip_prefix = "protobuf-3.11.0",
+    url = "https://github.com/google/protobuf/archive/v3.11.0.tar.gz",
 )
+
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+
+protobuf_deps()
 
 # Mention subpar directly to ensure we get version 2.0.0,
 # which included fixes for incompatible change flags added in Bazel 0.25. This
@@ -33,25 +44,24 @@ git_repository(
 )
 
 http_archive(
-    name = "base_images_docker",
-    sha256 = "a4d4c1a53ad0df5146da95df37d5d5b4f15c9f50f5613566ddf460d00f0605c0",
-    strip_prefix = "base-images-docker-31af4f6d8be1cfea468fd98f906f26666daf38fe",
-    urls = ["https://github.com/GoogleCloudPlatform/base-images-docker/archive/31af4f6d8be1cfea468fd98f906f26666daf38fe.tar.gz"],
+    name = "com_github_grpc_grpc",
+    sha256 = "ffbe61269160ea745e487f79b0fd06b6edd3d50c6d9123f053b5634737cf2f69",
+    strip_prefix = "grpc-1.25.0",
+    urls = ["https://github.com/grpc/grpc/archive/v1.25.0.tar.gz"],
 )
 
-http_archive(
-    name = "io_bazel_rules_docker",
-    sha256 = "1fc5947055ed78ff098f4a75aecc8dba6d69c31b034780559efea2324f6a92b6",
-    strip_prefix = "rules_docker-5d35fee42a513ac83dc23c32ba1f0b029fd75e0f",
-    urls = ["https://github.com/bazelbuild/rules_docker/archive/5d35fee42a513ac83dc23c32ba1f0b029fd75e0f.tar.gz"],
-)
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
-load(
-    "@io_bazel_rules_docker//repositories:repositories.bzl",
-    container_repositories = "repositories",
-)
+grpc_deps()
 
-container_repositories()
+# upb_deps and apple_rules_dependencies are needed for grpc
+load("@upb//bazel:workspace_deps.bzl", "upb_deps")
+
+upb_deps()
+
+load("@build_bazel_rules_apple//apple:repositories.bzl", "apple_rules_dependencies")
+
+apple_rules_dependencies()
 
 load(
     "@io_bazel_rules_docker//container:container.bzl",
@@ -74,18 +84,16 @@ http_file(
     ],
 )
 
-load("//k8s:k8s.bzl", "k8s_defaults", "k8s_repositories")
+_CLUSTER = "gke_rules-k8s_us-central1-f_testing"
 
-k8s_repositories()
+_CONTEXT = _CLUSTER
 
-_CLUSTER = "kind"
-
-
-_NAMESPACE = ""
+_NAMESPACE = "{E2E_NAMESPACE}"
 
 k8s_defaults(
     name = "k8s_object",
     cluster = _CLUSTER,
+    context = _CONTEXT,
     image_chroot = "us.gcr.io/rules_k8s/{BUILD_USER}",
     namespace = _NAMESPACE,
 )
@@ -93,6 +101,7 @@ k8s_defaults(
 k8s_defaults(
     name = "k8s_deploy",
     cluster = _CLUSTER,
+    context = _CONTEXT,
     image_chroot = "us.gcr.io/rules_k8s/{BUILD_USER}",
     kind = "deployment",
     namespace = _NAMESPACE,
@@ -101,6 +110,7 @@ k8s_defaults(
 [k8s_defaults(
     name = "k8s_" + kind,
     cluster = _CLUSTER,
+    context = _CONTEXT,
     kind = kind,
     namespace = _NAMESPACE,
 ) for kind in [
@@ -130,21 +140,6 @@ py_library(
     url = "https://pypi.python.org/packages/source/m/mock/mock-1.0.1.tar.gz",
 )
 
-http_archive(
-    name = "io_bazel_rules_go",
-    sha256 = "a82a352bffae6bee4e95f68a8d80a70e87f42c4741e6a448bec11998fcc82329",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/0.18.5/rules_go-0.18.5.tar.gz",
-        "https://github.com/bazelbuild/rules_go/releases/download/0.18.5/rules_go-0.18.5.tar.gz",
-    ],
-)
-
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-
-go_rules_dependencies()
-
-go_register_toolchains()
-
 # ================================================================
 # Imports for examples/
 # ================================================================
@@ -153,13 +148,13 @@ go_register_toolchains()
 # first if we're going to explicitly mention it at all
 
 git_repository(
-    name = "io_bazel_rules_python",
-    commit = "fdbb17a4118a1728d19e638a5291b4c4266ea5b8",  # 2019-03-07
+    name = "rules_python",
+    commit = "94677401bc56ed5d756f50b441a6a5c7f735a6d4",  # 2019-03-07
     remote = "https://github.com/bazelbuild/rules_python.git",
 )
 
 load(
-    "@io_bazel_rules_python//python:pip.bzl",
+    "@rules_python//python:pip.bzl",
     "pip_import",
     "pip_repositories",
 )
@@ -168,9 +163,13 @@ pip_repositories()
 
 http_archive(
     name = "build_stack_rules_proto",
-    sha256 = "8a9cf001e3ba5c97d45ed8eb09985f15355df4bbe2dc6dd4844cccfe71f17d3e",
-    strip_prefix = "rules_proto-9e68c7eb1e36bd08e9afebc094883ebc4debdb09",
-    urls = ["https://github.com/stackb/rules_proto/archive/9e68c7eb1e36bd08e9afebc094883ebc4debdb09.tar.gz"],
+    patch_args = ["-p1"],
+    patches = [
+        "//third_party/build_stack_rules_proto:stackb.patch",
+    ],
+    sha256 = "85ccc69a964a9fe3859b1190a7c8246af2a4ead037ee82247378464276d4262a",
+    strip_prefix = "rules_proto-d9a123032f8436dbc34069cfc3207f2810a494ee",
+    urls = ["https://github.com/stackb/rules_proto/archive/d9a123032f8436dbc34069cfc3207f2810a494ee.tar.gz"],
 )
 
 load("@build_stack_rules_proto//:deps.bzl", "io_grpc_grpc_java")
@@ -188,18 +187,6 @@ java_grpc_library()
 load("@build_stack_rules_proto//cpp:deps.bzl", "cpp_grpc_library")
 
 cpp_grpc_library()
-
-http_archive(
-    name = "com_github_grpc_grpc",
-    sha256 = "2865da2048bb3ea775505a9ae2a1b61430ed0186c9618083f0bd3b4a47687c52",
-    strip_prefix = "grpc-044a8e29df4c5c2716c7e8250c6b2585e1c425ff",
-    # Commit from 2019-05-30
-    urls = ["https://github.com/grpc/grpc/archive/044a8e29df4c5c2716c7e8250c6b2585e1c425ff.tar.gz"],
-)
-
-load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
-
-grpc_deps()
 
 load("@build_stack_rules_proto//go:deps.bzl", "go_grpc_library")
 
@@ -285,7 +272,7 @@ _py_image_repos()
 
 git_repository(
     name = "io_bazel_rules_jsonnet",
-    commit = "4012fc54776a2ac21badb71434cc7e75aec24733",
+    commit = "12979862ab51358a8a5753f5a4aa0658fec9d4af",
     remote = "https://github.com/bazelbuild/rules_jsonnet.git",
 )
 
@@ -329,13 +316,54 @@ npm_install(
     package_json = "//examples/hellohttp/nodejs:package.json",
 )
 
-# error_prone_annotations required by protobuf 3.7.1
-maven_jar(
-    name = "error_prone_annotations_maven",
-    artifact = "com.google.errorprone:error_prone_annotations:2.3.2",
+http_archive(
+    name = "rules_jvm_external",
+    sha256 = "e5b97a31a3e8feed91636f42e19b11c49487b85e5de2f387c999ea14d77c7f45",
+    strip_prefix = "rules_jvm_external-2.9",
+    url = "https://github.com/bazelbuild/rules_jvm_external/archive/2.9.zip",
 )
 
+load("@rules_jvm_external//:defs.bzl", "maven_install")
+
+maven_install(
+    name = "maven",
+    artifacts = [
+        "com.google.errorprone:error_prone_annotations:2.3.2",
+    ],
+    repositories = [
+        "https://jcenter.bintray.com",
+        "https://repo1.maven.org/maven2",
+    ],
+)
+
+# error_prone_annotations required by protobuf 3.7.1
 bind(
     name = "error_prone_annotations",
-    actual = "@error_prone_annotations_maven//jar",
+    actual = "@maven//:com_google_errorprone_error_prone_annotations",
+)
+
+# gazelle:repo bazel_gazelle
+
+# Go dependencies needed for rules_k8s tests only.
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+go_repository(
+    name = "org_golang_google_grpc",
+    importpath = "google.golang.org/grpc",
+    sum = "h1:q4XQuHFC6I28BKZpo6IYyb3mNO+l7lSOxRuYTCiDfXk=",
+    version = "v1.23.1",
+)
+
+go_repository(
+    name = "org_golang_x_net",
+    importpath = "golang.org/x/net",
+    sum = "h1:h5tBRKZ1aY/bo6GNqe/4zWC8GkaLOFQ5wPKIOQ0i2sA=",
+    version = "v0.0.0-20190918130420-a8b05e9114ab",
+)
+
+go_repository(
+    name = "org_golang_x_text",
+    importpath = "golang.org/x/text",
+    sum = "h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=",
+    version = "v0.3.2",
 )

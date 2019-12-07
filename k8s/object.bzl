@@ -76,9 +76,17 @@ def _impl(ctx):
             image_spec["digest"] = ",".join([_runfiles(ctx, f) for f in blobsums])
             all_inputs += blobsums
 
+            diff_ids = image.get("diff_id", [])
+            image_spec["diff_id"] = ",".join([_runfiles(ctx, f) for f in diff_ids])
+            all_inputs += diff_ids
+
             blobs = image.get("zipped_layer", [])
-            image_spec["layer"] = ",".join([_runfiles(ctx, f) for f in blobs])
+            image_spec["compressed_layer"] = ",".join([_runfiles(ctx, f) for f in blobs])
             all_inputs += blobs
+
+            uncompressed_blobs = image.get("unzipped_layer", [])
+            image_spec["uncompressed_layer"] = ",".join([_runfiles(ctx, f) for f in uncompressed_blobs])
+            all_inputs += uncompressed_blobs
 
             image_spec["config"] = _runfiles(ctx, image["config"])
             all_inputs += [image["config"]]
@@ -88,6 +96,12 @@ def _impl(ctx):
                 "%s=%s" % (k, v)
                 for (k, v) in image_spec.items()
             ])]
+
+    # Add workspace_status_command files to the args that are pushed to the resolver and adds the
+    # files to the runfiles so they are available to the resolver executable.
+    stamp_inputs = [ctx.info_file, ctx.version_file]
+    stamp_args = " ".join(["--stamp-info-file=%s" % _runfiles(ctx, f) for f in stamp_inputs])
+    all_inputs += stamp_inputs
 
     image_chroot_arg = ctx.attr.image_chroot
     image_chroot_arg = ctx.expand_make_variables("image_chroot", image_chroot_arg, {})
@@ -116,6 +130,7 @@ def _impl(ctx):
             ]),
             "%{resolver_args}": " ".join(ctx.attr.resolver_args or []),
             "%{resolver}": _runfiles(ctx, ctx.executable.resolver),
+            "%{stamp_args}": stamp_args,
             "%{yaml}": _runfiles(ctx, ctx.outputs.substituted),
         },
         output = ctx.outputs.executable,
@@ -135,16 +150,13 @@ def _impl(ctx):
 
 def _resolve(ctx, string, output):
     stamps = [ctx.info_file, ctx.version_file]
-    stamp_args = [
-        "--stamp-info-file=%s" % sf.path
-        for sf in stamps
-    ]
+    args = ctx.actions.args()
+    args.add_all(stamps, format_each = "--stamp-info-file=%s")
+    args.add(string, format = "--format=%s")
+    args.add(output, format = "--output=%s")
     ctx.actions.run(
         executable = ctx.executable._stamper,
-        arguments = [
-            "--format=%s" % string,
-            "--output=%s" % output.path,
-        ] + stamp_args,
+        arguments = [args],
         inputs = stamps,
         tools = [ctx.executable._stamper],
         outputs = [output],
@@ -159,7 +171,7 @@ def _common_impl(ctx):
     if "{" in ctx.attr.cluster:
         cluster_file = ctx.actions.declare_file(ctx.label.name + ".cluster-name")
         _resolve(ctx, ctx.attr.cluster, cluster_file)
-        cluster_arg = "--cluster=$(cat %s)" % _runfiles(ctx, cluster_file)
+        cluster_arg = "$(cat %s)" % _runfiles(ctx, cluster_file)
         files += [cluster_file]
 
     context_arg = ctx.attr.context
@@ -189,26 +201,14 @@ def _common_impl(ctx):
     if namespace_arg:
         namespace_arg = "--namespace=\"" + namespace_arg + "\""
 
-    if context_arg:
-        context_arg = "--context=\"" + context_arg + "\""
-
-    if user_arg:
-        user_arg = "--user=\"" + user_arg + "\""
-
-    if cluster_arg:
-        cluster_arg = "--cluster=\"" + cluster_arg + "\""
-
     if ctx.file.kubeconfig:
         kubeconfig_arg = _runfiles(ctx, ctx.file.kubeconfig)
         files += [ctx.file.kubeconfig]
     else:
         kubeconfig_arg = ""
 
-    if kubeconfig_arg:
-        kubeconfig_arg = "--kubeconfig=\"" + kubeconfig_arg + "\""
-
-
     kubectl_tool_info = ctx.toolchains["@io_bazel_rules_k8s//toolchains/kubectl:toolchain_type"].kubectlinfo
+    extrafiles = depset()
     if kubectl_tool_info.tool_path == "" and not kubectl_tool_info.tool_target:
         # If tool_path is empty and tool_target is None then there is no local
         # kubectl tool, we will just print a nice error message if the user
@@ -221,7 +221,7 @@ def _common_impl(ctx):
         kubectl_tool = kubectl_tool_info.tool_path
         if kubectl_tool_info.tool_target:
             kubectl_tool = _runfiles(ctx, kubectl_tool_info.tool_target.files.to_list()[0])
-            files += kubectl_tool_info.tool_target.files.to_list()
+            extrafiles = depset(transitive = [kubectl_tool_info.tool_target.files])
 
         substitutions = {
             "%{cluster}": cluster_arg,
@@ -236,20 +236,16 @@ def _common_impl(ctx):
         if hasattr(ctx.executable, "resolved"):
             substitutions["%{resolve_script}"] = _runfiles(ctx, ctx.executable.resolved)
             files += [ctx.executable.resolved]
-            files += list(ctx.attr.resolved[DefaultInfo].default_runfiles.files.to_list())
+            extrafiles = depset(transitive = [ctx.attr.resolved[DefaultInfo].default_runfiles.files, extrafiles])
 
         if hasattr(ctx.executable, "reversed"):
             substitutions["%{reverse_script}"] = _runfiles(ctx, ctx.executable.reversed)
             files += [ctx.executable.reversed]
-            files += list(ctx.attr.reversed[DefaultInfo].default_runfiles.files.to_list())
+            extrafiles = depset(transitive = [ctx.attr.reversed[DefaultInfo].default_runfiles.files, extrafiles])
 
         if hasattr(ctx.files, "unresolved"):
             substitutions["%{unresolved}"] = _runfiles(ctx, ctx.file.unresolved)
             files += ctx.files.unresolved
-
-        substitutions["%{apply_overwrite}"] = ""
-        if hasattr(ctx.attr, "apply_overwrite") and not ctx.attr.apply_overwrite:
-            substitutions["%{apply_overwrite}"] = "--overwrite=" + str(ctx.attr.apply_overwrite)
 
         ctx.actions.expand_template(
             template = ctx.file._template,
@@ -259,7 +255,7 @@ def _common_impl(ctx):
 
     return [
         DefaultInfo(
-            runfiles = ctx.runfiles(files = files),
+            runfiles = ctx.runfiles(files = files, transitive_files = extrafiles),
         ),
     ]
 
@@ -276,7 +272,7 @@ _common_attrs = {
     ),
     "namespace": attr.string(),
     "resolver": attr.label(
-        default = Label("//k8s:resolver"),
+        default = Label("//k8s/go/cmd/resolver"),
         cfg = "host",
         executable = True,
         allow_files = True,
@@ -351,7 +347,6 @@ _k8s_object = rule(
             "image_targets": attr.label_list(allow_files = True),
             "images": attr.string_dict(),
             "substitutions": attr.string_dict(),
-            "apply_overwrite": attr.bool(default=True, mandatory=False),
             "template": attr.label(
                 allow_single_file = [
                     ".yaml",
@@ -385,10 +380,6 @@ _k8s_object_apply = rule(
             "_template": attr.label(
                 default = Label("//k8s:apply.sh.tpl"),
                 allow_single_file = True,
-            ),
-            "apply_overwrite": attr.bool(
-                default=True,
-                mandatory=False,
             ),
         },
         _common_attrs,
@@ -483,6 +474,8 @@ _k8s_object_delete = rule(
 # See "attrs" parameter at https://docs.bazel.build/versions/master/skylark/lib/globals.html#parameters-26
 _implicit_attrs = [
     "visibility",
+    "restricted_to",
+    "compatible_with",
     "deprecation",
     "tags",
     "testonly",
@@ -574,7 +567,6 @@ def k8s_object(name, **kwargs):
             user = kwargs.get("user"),
             namespace = kwargs.get("namespace"),
             args = kwargs.get("args"),
-            apply_overwrite = kwargs.get("apply_overwrite"),
             **implicit_args
         )
         if "kind" in kwargs:
