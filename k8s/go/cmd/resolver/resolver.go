@@ -164,8 +164,16 @@ func publishSingle(spec imageSpec, stamper *compat.Stamper) (string, error) {
 		return "", fmt.Errorf("unable to get authenticator for image %v", ref.Name())
 	}
         log.Print("Writing with auth")
-	if err := remote.Write(ref, img, remote.WithAuth(auth)); err != nil {
-		return "", fmt.Errorf("unable to push image %v: %v", ref.Name(), err)
+        log.Print(ref)
+	if ref.Scheme() == "http" {
+		if err := remote.Write(ref, img); err != nil {
+                        return "", fmt.Errorf("unable to push image %v: %v", ref.Name(), err)
+                }
+
+	} else {
+		if err := remote.Write(ref, img, remote.WithAuth(auth)); err != nil {
+			return "", fmt.Errorf("unable to push image %v: %v", ref.Name(), err)
+		}
 	}
         log.Print("Fetching digest")
 	d, err := img.Digest()
