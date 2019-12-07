@@ -158,19 +158,20 @@ func publishSingle(spec imageSpec, stamper *compat.Stamper) (string, error) {
 		}
 		ref = t
 	}
-        log.Print("Fetching auth")
-	auth, err := authn.DefaultKeychain.Resolve(ref.Context())
-	if err != nil {
-		return "", fmt.Errorf("unable to get authenticator for image %v", ref.Name())
-	}
-        log.Print("Writing with auth")
+        log.Print("Writing")
         log.Print(ref)
 	if ref.Context().Scheme() == "http" {
+		log.Print(" without options")
 		if err := remote.Write(ref, img); err != nil {
                         return "", fmt.Errorf("unable to push image %v: %v", ref.Name(), err)
                 }
 
 	} else {
+		log.Print("Fetching auth")
+	        auth, err := authn.DefaultKeychain.Resolve(ref.Context())
+        	if err != nil {
+        	        return "", fmt.Errorf("unable to get authenticator for image %v", ref.Name())
+        	}
 		if err := remote.Write(ref, img, remote.WithAuth(auth)); err != nil {
 			return "", fmt.Errorf("unable to push image %v: %v", ref.Name(), err)
 		}
