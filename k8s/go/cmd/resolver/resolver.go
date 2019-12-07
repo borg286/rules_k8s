@@ -165,7 +165,7 @@ func publishSingle(spec imageSpec, stamper *compat.Stamper) (string, error) {
 	}
         log.Print("Writing with auth")
         log.Print(ref)
-	if ref.Scheme() == "http" {
+	if ref.Context().Scheme() == "http" {
 		if err := remote.Write(ref, img); err != nil {
                         return "", fmt.Errorf("unable to push image %v: %v", ref.Name(), err)
                 }
